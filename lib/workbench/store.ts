@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { create } from "zustand";
-import { workbenchComponents } from "./component-registry";
 import { clearFiles } from "./file-store";
 import type {
   MockConfigState,
@@ -37,8 +36,6 @@ import {
   DEFAULT_TOOL_CONFIG,
   DEVICE_PRESETS,
 } from "./types";
-
-const defaultComponent = workbenchComponents[0];
 
 interface ActiveToolCall {
   toolName: string;
@@ -192,14 +189,14 @@ function buildOpenAIGlobals(
 }
 
 export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
-  selectedComponent: defaultComponent?.id ?? "chart",
+  selectedComponent: "welcome",
   displayMode: "inline",
   previousDisplayMode: "inline",
   theme: "light",
   locale: "en-US",
   deviceType: "desktop",
   resizableWidth: 500,
-  toolInput: defaultComponent?.defaultProps ?? {},
+  toolInput: {},
   toolOutput: null,
   widgetState: null,
   maxHeight: 400,
@@ -225,10 +222,10 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   conversationMode: false,
   setSelectedComponent: (id) => {
     clearFiles();
-    set(() => {
-      const entry = workbenchComponents.find((comp) => comp.id === id) ?? null;
-
-      return {
+    // Dynamic import to avoid circular dependency
+    import("./component-registry").then(({ getComponent }) => {
+      const entry = getComponent(id) ?? null;
+      set(() => ({
         selectedComponent: id,
         toolInput: entry?.defaultProps ?? {},
         toolOutput: null,
@@ -237,7 +234,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         toolResponseMetadata: null,
         isWidgetClosed: false,
         widgetSessionId: crypto.randomUUID(),
-      };
+      }));
     });
   },
   setDisplayMode: (mode) =>
